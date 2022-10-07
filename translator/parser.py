@@ -28,6 +28,8 @@ class Parser:
         for line in file_data:
             if line.isspace():
                 continue
+            if line[0] == '/':
+                continue
             commands.append(self.strip_line(line))
         return commands
 
@@ -36,9 +38,9 @@ class Parser:
         for command in commands:
             split_command = command.split()
             command_dict = {'command': split_command[0]}
-            if split_command.length > 1:
+            if len(split_command) > 1:
                 command_dict['segment'] = split_command[1]
-            if split_command.length > 2:
+            if len(split_command) > 2:
                 command_dict['address'] = split_command[2]
             split_commands.append(command_dict)
         return split_commands
@@ -47,10 +49,3 @@ class Parser:
         file_data = self.load_file(self.file_path)
         commands = self.clean_file_data(file_data)
         return self.create_command_dictionaries(commands)
-
-            
-
-
-
-
-    
