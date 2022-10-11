@@ -6,8 +6,6 @@ class Parser:
     it line by line into individual commands.
     ARGS:
         file_path (string): the path of the .vm file to be parsed.
-    Returns:
-        A list of single VM commands
     '''
     def __init__(self, file_path):
         self.file_path = file_path
