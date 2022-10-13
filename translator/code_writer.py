@@ -3,26 +3,31 @@ class CodeWriter:
 
     def write_arithmetic(self, command_in):
         command = command_in['command']
-        commands = ['@SP']
+        commands = []
         if command == 'eq' or command == 'gt' or command == 'lt':
-            commands.extend(['A=M-1', 'D=M', '@SP', 'M=M-1', 'A=M-1', 'D=M-D', '@JUMP', 
+            commands.extend(['// equals?', '@SP', 'A=M-1', 'D=M', '@SP', 'M=M-1', 'A=M-1', 'D=M-D', '@JUMP', 
             'D;JEQ', '@SP', 'A=M-1', 'M=0', '@END', '0;JMP', '(JUMP)', '@SP', 'A=M-1', 'M=-1', '(END)'])
         if command == 'gt':
-            commands[8] = 'D;JGT'
+            commands[0] = '// greater than?'
+            commands[9] = 'D;JGT'
         if command == 'lt':
-            commands[8] = 'D;JLT'
+            commands[0] = '// less than?'
+            commands[9] = 'D;JLT'
         if command == 'neg':
-            commands.extend(['A=M-1', 'M=-M'])
+            commands.extend(['// negate y', '@SP', 'A=M-1', 'M=-M'])
         if command == 'not':
-            commands.extend(['A=M-1', 'M=!M'])
+            commands.extend(['// not y', '@SP', 'A=M-1', 'M=!M'])
         if command == 'add' or command == 'sub' or command == 'and' or command == 'or':
-            commands.extend(['A=M-1', 'D=M', '@SP', 'M=M-1', 'A=M-1', 'M=D+M'])
+            commands.extend(['// add', '@SP', 'A=M-1', 'D=M', '@SP', 'M=M-1', 'A=M-1', 'M=D+M'])
         if command == 'sub':
-            commands[6] = 'M=M-D'
+            commands[0] = '// sub'
+            commands[7] = 'M=M-D'
         if command == 'and':
-            commands[6] = 'M=D&M'
+            commands[0] = '// and'
+            commands[7] = 'M=D&M'
         if command == 'or':
-            commands[6] = 'M=D|M'
+            commands[0] = '// or'
+            commands[7] = 'M=D|M'
         for line in commands:
                 self.add_command(line)
 
@@ -30,16 +35,22 @@ class CodeWriter:
         self.program_in_hack.append(command)
 
     def write_push_pop(self, command):
-        if command['segment'] == 'constant':
+        if command['segment'] == 'constant' and command['command'] == 'push':
+            self.add_command(f'// push constant {command["address"]}')
             self.add_command(f'@{command["address"]}')
             self.add_command('D=A')
-        self.add_command('@SP')
-        if command['command'] == 'push':
+            self.add_command('@SP')
             self.add_command('A=M')
             self.add_command('M=D')
             self.add_command('@SP')
             self.add_command('M=M+1')
+        elif command['command'] == 'push':
+            self.push(command['segment'], command['address'])
 
+    def push(self, segment, address):
+        pass
+    def pop(self, segment, address):
+        pass
     def handle_command(self, command):
         if command['command'] == 'push' or command['command'] == 'pop':
             self.write_push_pop(command)
