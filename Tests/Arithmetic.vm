@@ -1,0 +1,18 @@
+push constant 5
+push constant 6
+add
+push constant 11
+eq
+not
+push constant 5
+push constant 3
+sub
+push constant 5
+lt
+and
+push constant 5
+push constant 3
+gt
+or
+push constant 5
+neg
