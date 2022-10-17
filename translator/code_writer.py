@@ -34,23 +34,37 @@ class CodeWriter:
     def add_command(self, command):
         self.program_in_hack.append(command)
 
-    def write_push_pop(self, command):
-        if command['segment'] == 'constant' and command['command'] == 'push':
-            self.add_command(f'// push constant {command["address"]}')
-            self.add_command(f'@{command["address"]}')
-            self.add_command('D=A')
-            self.add_command('@SP')
-            self.add_command('A=M')
-            self.add_command('M=D')
-            self.add_command('@SP')
-            self.add_command('M=M+1')
-        elif command['command'] == 'push':
-            self.push(command['segment'], command['address'])
-
-    def push(self, segment, address):
-        pass
-    def pop(self, segment, address):
-        pass
+    def write_push_pop(self, command_in):
+        command = command_in['command']
+        segment = command_in['segment']
+        address = command_in['address']
+        commands = []
+        if command == 'push':
+            if segment == 'constant':
+                commands.extend([f'// push constant {address}', f'@{address}', 'D=A'])
+            elif segment == 'argument':
+                commands.extend([f'// push argument {address}', f'@{address}', 'D=A', '@ARG', 'A=D+M', 'D=M'])
+            elif segment == 'local':
+                commands.extend([f'// push local {address}', f'@{address}', 'D=A', '@LCL', 'A=D+M', 'D=M'])
+            elif segment == 'static':
+                commands.extend([f'// push static {address}', f'@FOO.{address}', 'D=M'])
+            elif segment == 'this':
+                commands.extend([f'// push this {address}', f'@{address}', 'D=A', '@THIS', 'A=D+M', 'D=M'])
+            elif segment == 'that':
+                commands.extend([f'// push that {address}', f'@{address}', 'D=A', '@THAT',
+                 'A=D+M', 'D=M'])
+            elif segment == 'pointer':
+                if address == '0':
+                    commands.extend([f'// push pointer {address}', '@THIS', 'D=M'])
+                elif address == '1':
+                    commands.extend([f'// push pointer {address}', '@THAT', 'D=M'])
+            elif segment == 'temp':
+                commands.extend([f'// push argument {address}', f'@{address}', 'D=A', '@ARG',
+                 'A=D+M', 'D=M'])
+            commands.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        for line in commands:
+            self.add_command(line)
+            
     def handle_command(self, command):
         if command['command'] == 'push' or command['command'] == 'pop':
             self.write_push_pop(command)
