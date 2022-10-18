@@ -3,7 +3,8 @@ from translator.code_writer import CodeWriter
 import sys
 
 parser = Parser(sys.argv[1])
-code_writer = CodeWriter()
+filename = sys.argv[1][0:-3]
+code_writer = CodeWriter(filename)
 
 commands = parser.load_and_parse()
 

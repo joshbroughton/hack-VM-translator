@@ -1,4 +1,7 @@
 class CodeWriter:
+    def __init__(self, filename):
+        self.filename = filename
+
     program_in_hack = ['@256', 'D=A', '@SP', 'M=D']
 
     def write_arithmetic(self, command_in):
@@ -47,24 +50,54 @@ class CodeWriter:
             elif segment == 'local':
                 commands.extend([f'// push local {address}', f'@{address}', 'D=A', '@LCL', 'A=D+M', 'D=M'])
             elif segment == 'static':
-                commands.extend([f'// push static {address}', f'@FOO.{address}', 'D=M'])
+                commands.extend([f'// push static {address}', f'@foo.{address}', 'D=M'])
             elif segment == 'this':
                 commands.extend([f'// push this {address}', f'@{address}', 'D=A', '@THIS', 'A=D+M', 'D=M'])
             elif segment == 'that':
-                commands.extend([f'// push that {address}', f'@{address}', 'D=A', '@THAT',
-                 'A=D+M', 'D=M'])
+                commands.extend([f'// push that {address}', f'@{address}', 'D=A', '@THAT', 'A=D+M', 'D=M'])
             elif segment == 'pointer':
                 if address == '0':
                     commands.extend([f'// push pointer {address}', '@THIS', 'D=M'])
                 elif address == '1':
                     commands.extend([f'// push pointer {address}', '@THAT', 'D=M'])
             elif segment == 'temp':
-                commands.extend([f'// push argument {address}', f'@{address}', 'D=A', '@ARG',
-                 'A=D+M', 'D=M'])
+                commands.extend([f'// push temp {address}', f'@{address}', 'D=A', '@5','A=D+A', 'D=M'])
             commands.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        elif command == 'pop':
+            commands.extend([f'// pop {segment} {address}', '@SP', 'AM=M-1', 'D=M'])
+            if segment == 'argument':
+                commands.extend(['@ARG', 'A=M'])
+                commands.extend(self.iterate_address(address))
+            elif segment == 'local':
+                commands.extend(['@LCL', 'A=M'])
+                commands.extend(self.iterate_address(address))
+            elif segment == 'static':
+                commands.extend([f'@foo.{address}', 'M=D'])
+            elif segment == 'this':
+                commands.extend(['@THIS', 'A=M'])
+                commands.extend(self.iterate_address(address))
+            elif segment == 'that':
+                commands.extend(['@THAT', 'A=M'])
+                commands.extend(self.iterate_address(address))
+            elif segment == 'pointer':
+                if address == '0':
+                    commands.extend(['@THIS', 'M=D'])
+                elif address == '1':
+                    commands.extend(['@THAT', 'M=D'])
+            elif segment == 'temp':
+                commands.extend(['@5'])
+                commands.extend(self.iterate_address(address))
         for line in commands:
             self.add_command(line)
-            
+
+    def iterate_address(self, address):
+        commands = []
+        address = int(address)
+        for i in range(address):
+            commands.append('A=A+1')
+        commands.append('M=D')
+        return commands
+                    
     def handle_command(self, command):
         if command['command'] == 'push' or command['command'] == 'pop':
             self.write_push_pop(command)
