@@ -1,6 +1,6 @@
 class CodeWriter:
     def __init__(self, filename):
-        self.filename = filename
+        self.filename = filename.replace('/', '')
 
     program_in_hack = ['@256', 'D=A', '@SP', 'M=D']
 
@@ -50,7 +50,7 @@ class CodeWriter:
             elif segment == 'local':
                 commands.extend([f'// push local {address}', f'@{address}', 'D=A', '@LCL', 'A=D+M', 'D=M'])
             elif segment == 'static':
-                commands.extend([f'// push static {address}', f'@foo.{address}', 'D=M'])
+                commands.extend([f'// push static {address}', f'@{self.filename}.{address}', 'D=M'])
             elif segment == 'this':
                 commands.extend([f'// push this {address}', f'@{address}', 'D=A', '@THIS', 'A=D+M', 'D=M'])
             elif segment == 'that':
@@ -72,7 +72,7 @@ class CodeWriter:
                 commands.extend(['@LCL', 'A=M'])
                 commands.extend(self.iterate_address(address))
             elif segment == 'static':
-                commands.extend([f'@foo.{address}', 'M=D'])
+                commands.extend([f'@{self.filename}.{address}', 'M=D'])
             elif segment == 'this':
                 commands.extend(['@THIS', 'A=M'])
                 commands.extend(self.iterate_address(address))
