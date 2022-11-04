@@ -143,6 +143,8 @@ class CodeWriter:
             self.write_label(command_in)
         elif command == 'goto':
             self.write_goto(command_in)
+        elif command == 'if-goto':
+            self.write_if_goto(command_in)
         else:
             self.write_arithmetic(command_in)
 
@@ -182,10 +184,20 @@ class CodeWriter:
 
     def write_goto(self, command_in):
         """
-        writes hack assembly code to effect an uncoditionatal goto label operation
+        writes hack assembly code to effect an unconditional goto label operation
         """
         label = command_in['segment']
         self.program_in_hack.extend([f'// goto {label}', f'@{label}', '0;JMP'])
+
+    def write_if_goto(self, command_in):
+        """
+        writes hack assembly code to effect a conditional goto label operation
+        pops the top value off the stack; if the value is not 0, goes to the label;
+        if the value is 0, execution continues normally
+        """
+        label = command_in['segment']
+        self.program_in_hack.extend([f'//if-goto {label}', '@SP', 'A=M-1', 'D=M',
+                                     f'@{label}', 'D;JNE'])
 
     def write_to_file(self, filename):
         """
