@@ -1,4 +1,10 @@
+"""
+Contains the Parser class, which reads Hack virtual machine code
+line by line and parses it into individual commands
+"""
+
 import re
+
 
 class Parser:
     '''
@@ -7,21 +13,33 @@ class Parser:
     ARGS:
         file_path (string): the path of the .vm file to be parsed.
     '''
+
     def __init__(self, file_path):
         self.file_path = file_path
 
     def load_file(self, file_path):
+        """
+        loads the data from the file specified by file_path into a list
+        each element in the list is a line from the file
+        """
         file_data = []
         with open(file_path, 'r', encoding='utf-8') as input_file:
             file_data = input_file.readlines()
         return file_data
 
     def strip_line(self, line):
+        """
+        strips trailing comments from lines
+        """
         regex = re.compile(r'//.*')
-        clean_line= regex.sub('', line).strip()
+        clean_line = regex.sub('', line).strip()
         return clean_line
 
     def clean_file_data(self, file_data):
+        """
+        reads the imported data line by line, creates a new list
+        containing only virtual machine commands
+        """
         commands = []
         for line in file_data:
             if line.isspace():
@@ -32,6 +50,10 @@ class Parser:
         return commands
 
     def create_command_dictionaries(self, commands):
+        """
+        splits each command into its component parts (command, segment, and
+        address) and saves these as a list of dictionaries
+        """
         split_commands = []
         for command in commands:
             split_command = command.split()
@@ -42,8 +64,12 @@ class Parser:
                 command_dict['address'] = split_command[2]
             split_commands.append(command_dict)
         return split_commands
-    
+
     def load_and_parse(self):
+        """
+        controller function which loads and parses a hack VM file into
+        a format that a code_writer object can translate
+        """
         file_data = self.load_file(self.file_path)
         commands = self.clean_file_data(file_data)
         return self.create_command_dictionaries(commands)
