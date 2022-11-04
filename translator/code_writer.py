@@ -1,4 +1,7 @@
 class CodeWriter:
+    def __init__(self, filename):
+        self.filename = filename.replace('/', '')
+
     program_in_hack = ['@256', 'D=A', '@SP', 'M=D']
 
     def write_arithmetic(self, command_in):
@@ -34,23 +37,67 @@ class CodeWriter:
     def add_command(self, command):
         self.program_in_hack.append(command)
 
-    def write_push_pop(self, command):
-        if command['segment'] == 'constant' and command['command'] == 'push':
-            self.add_command(f'// push constant {command["address"]}')
-            self.add_command(f'@{command["address"]}')
-            self.add_command('D=A')
-            self.add_command('@SP')
-            self.add_command('A=M')
-            self.add_command('M=D')
-            self.add_command('@SP')
-            self.add_command('M=M+1')
-        elif command['command'] == 'push':
-            self.push(command['segment'], command['address'])
+    def write_push_pop(self, command_in):
+        command = command_in['command']
+        segment = command_in['segment']
+        address = command_in['address']
+        commands = []
+        if command == 'push':
+            if segment == 'constant':
+                commands.extend([f'// push constant {address}', f'@{address}', 'D=A'])
+            elif segment == 'argument':
+                commands.extend([f'// push argument {address}', f'@{address}', 'D=A', '@ARG', 'A=D+M', 'D=M'])
+            elif segment == 'local':
+                commands.extend([f'// push local {address}', f'@{address}', 'D=A', '@LCL', 'A=D+M', 'D=M'])
+            elif segment == 'static':
+                commands.extend([f'// push static {address}', f'@{self.filename}.{address}', 'D=M'])
+            elif segment == 'this':
+                commands.extend([f'// push this {address}', f'@{address}', 'D=A', '@THIS', 'A=D+M', 'D=M'])
+            elif segment == 'that':
+                commands.extend([f'// push that {address}', f'@{address}', 'D=A', '@THAT', 'A=D+M', 'D=M'])
+            elif segment == 'pointer':
+                if address == '0':
+                    commands.extend([f'// push pointer {address}', '@THIS', 'D=M'])
+                elif address == '1':
+                    commands.extend([f'// push pointer {address}', '@THAT', 'D=M'])
+            elif segment == 'temp':
+                commands.extend([f'// push temp {address}', f'@{address}', 'D=A', '@5','A=D+A', 'D=M'])
+            commands.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        elif command == 'pop':
+            commands.extend([f'// pop {segment} {address}', '@SP', 'AM=M-1', 'D=M'])
+            if segment == 'argument':
+                commands.extend(['@ARG', 'A=M'])
+                commands.extend(self.iterate_address(address))
+            elif segment == 'local':
+                commands.extend(['@LCL', 'A=M'])
+                commands.extend(self.iterate_address(address))
+            elif segment == 'static':
+                commands.extend([f'@{self.filename}.{address}', 'M=D'])
+            elif segment == 'this':
+                commands.extend(['@THIS', 'A=M'])
+                commands.extend(self.iterate_address(address))
+            elif segment == 'that':
+                commands.extend(['@THAT', 'A=M'])
+                commands.extend(self.iterate_address(address))
+            elif segment == 'pointer':
+                if address == '0':
+                    commands.extend(['@THIS', 'M=D'])
+                elif address == '1':
+                    commands.extend(['@THAT', 'M=D'])
+            elif segment == 'temp':
+                commands.extend(['@5'])
+                commands.extend(self.iterate_address(address))
+        for line in commands:
+            self.add_command(line)
 
-    def push(self, segment, address):
-        pass
-    def pop(self, segment, address):
-        pass
+    def iterate_address(self, address):
+        commands = []
+        address = int(address)
+        for i in range(address):
+            commands.append('A=A+1')
+        commands.append('M=D')
+        return commands
+                    
     def handle_command(self, command):
         if command['command'] == 'push' or command['command'] == 'pop':
             self.write_push_pop(command)
