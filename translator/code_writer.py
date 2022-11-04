@@ -132,12 +132,17 @@ class CodeWriter:
         return commands
 
     def handle_command(self, command_in):
-        """Handles logic of determining if a VM command is a push/pop or arithmetic command"""
+        """
+        Handles logic of determining the type of VM command and calling the
+        the appropriate write function to translte the command
+        """
         command = command_in['command']
         if command == 'push' or command == 'pop':
             self.write_push_pop(command_in)
         elif command == 'label':
             self.write_label(command_in)
+        elif command == 'goto':
+            self.write_goto(command_in)
         else:
             self.write_arithmetic(command_in)
 
@@ -174,6 +179,13 @@ class CodeWriter:
         """
         label = command_in['segment']
         self.program_in_hack.append(f'({label})')
+
+    def write_goto(self, command_in):
+        """
+        writes hack assembly code to effect an uncoditionatal goto label operation
+        """
+        label = command_in['segment']
+        self.program_in_hack.extend([f'// goto {label}', f'@{label}', '0;JMP'])
 
     def write_to_file(self, filename):
         """
