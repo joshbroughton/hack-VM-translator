@@ -196,7 +196,7 @@ class CodeWriter:
         if the value is 0, execution continues normally
         """
         label = command_in['segment']
-        self.program_in_hack.extend([f'//if-goto {label}', '@SP', 'A=M-1', 'D=M',
+        self.program_in_hack.extend([f'//if-goto {label}', '@SP', 'AM=M-1', 'D=M',
                                      f'@{label}', 'D;JNE'])
 
     def write_to_file(self, filename):
