@@ -4,3 +4,6 @@ code. Completed as part of the nand2tetris part 2 course on [Coursera](https://w
 to Java, in which programs written in the high-level language (Jack) are compiled to an
 intermediary virtual machine code before being translated down to Hack assembly and finally
 assembled into hack machine code.
+
+To run test scripts, launch the nand2tetris CPU Emulator, available in the tools directory from
+the nand2tetris [website](https://www.nand2tetris.org/).
