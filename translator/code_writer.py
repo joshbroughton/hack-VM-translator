@@ -139,12 +139,14 @@ class CodeWriter:
         command = command_in['command']
         if command == 'push' or command == 'pop':
             self.write_push_pop(command_in)
-        elif command == 'label':
+        elif command == 'label' or command == 'function':
             self.write_label(command_in)
         elif command == 'goto':
             self.write_goto(command_in)
         elif command == 'if-goto':
             self.write_if_goto(command_in)
+        elif command == 'call':
+            self.call_function(command_in)
         else:
             self.write_arithmetic(command_in)
 
@@ -198,6 +200,20 @@ class CodeWriter:
         label = command_in['segment']
         self.program_in_hack.extend([f'//if-goto {label}', '@SP', 'AM=M-1', 'D=M',
                                      f'@{label}', 'D;JNE'])
+
+    def call_function(self, command_in):
+        """
+        Write hack assembly to call a function:
+        1) Housekeeping to save the state of the caller
+        2) Unconditional GOTO Label for the function
+        Return to the caller will be handled separately
+        """
+        commands = []
+        #push return label onto stack
+        commands.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        #push LCL 
+
+
 
     def write_to_file(self, filename):
         """
