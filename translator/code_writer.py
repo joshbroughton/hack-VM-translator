@@ -13,7 +13,7 @@ class CodeWriter:
     def __init__(self, filename):
         self.filename = filename.replace('/', '')
     # initalize the assembly output
-    program_in_hack = ['@256', 'D=A', '@SP', 'M=D']
+    program_in_hack = []
 
     def write_arithmetic(self, command_in):
         """
@@ -139,7 +139,7 @@ class CodeWriter:
         command = command_in['command']
         if command == 'push' or command == 'pop':
             self.write_push_pop(command_in)
-        elif command == 'label' or command == 'function':
+        elif command == 'label':
             self.write_label(command_in)
         elif command == 'goto':
             self.write_goto(command_in)
@@ -147,6 +147,10 @@ class CodeWriter:
             self.write_if_goto(command_in)
         elif command == 'call':
             self.call_function(command_in)
+        elif command == 'function':
+            self.write_function(command_in)
+        elif command == 'return':
+            self.return_function()
         else:
             self.write_arithmetic(command_in)
 
@@ -209,12 +213,58 @@ class CodeWriter:
         Return to the caller will be handled separately
         """
         commands = []
-        #push return label onto stack
+        #push return label onto stack - I THINK JUST PUSH THE LABEL
+        # AND THE ASSEMBLER WILL MAKE IT A NUMBER
         # this pushes whatever is in D onto the stack
         commands.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
         #push LCL 
 
+    def return_label(self, function_name):
+        '''
+        Generates a label for a function call. To handle multiple calls
+        to the same function in a single program, checks and iterates i
+        to generate a unqiue return lable for each call.
+        '''
+        i = 0
+        while f'{function_name}$ret.{i}' in self.program_in_hack:
+            i += 1 
+        label = f'{function_name}$ret.{i}'
+        return label
 
+    def write_function(self, command_in):
+        '''
+        writes hack assembly code for a function functionName nVars command,
+        i.e. for declaring a function
+        '''
+        function_name = command_in['segment']
+        n_vars = int(command_in['address'])
+        # insert a label (function_name)
+        self.program_in_hack.extend([f'//function {function_name} {n_vars}',
+                                    f'({function_name})'])
+        # set the LCL pointer to point to current SP 
+        self.program_in_hack.extend(['@SP', 'D=M', '@LCL', 'M=D'])
+        # push n_vars 0s onto the stack
+        count = 0
+        while count < n_vars:
+            self.write_push_pop({'command': 'push', 'segment': 'constant', 'address': '0'})
+            count += 1
+
+    def return_function(self):
+        # push the return value to arg 0
+        self.program_in_hack.extend(['//return', '@SP', 'A=M-1', 'D=M', '@ARG', 'A=M', 'M=D'])
+        # let @5 be end_frame and @6 be return_address
+        # set @5 to end_frame address
+        self.program_in_hack.extend(['@LCL', 'D=M', '@5', 'M=D'])
+        # set @6 to be value of end_frame (still stored in D) - 5
+        self.program_in_hack.extend(['@5', 'A=D-A', 'D=M', '@6', 'M=D'])
+        # repostion SP to ARG + 1
+        self.program_in_hack.extend(['@ARG', 'D=M+1', '@SP', 'M=D'])
+        # restore THAT, THIS, ARG, and LCL to caller state
+        self.program_in_hack.extend(['@5', 'A=M-1', 'D=M', '@THAT', 'M=D'])
+        self.program_in_hack.extend(['@5', 'D=M', '@2', 'A=D-A', 'D=M', '@THIS', 'M=D'])
+        self.program_in_hack.extend(['@5', 'D=M', '@3', 'A=D-A', 'D=M', '@ARG', 'M=D'])
+        self.program_in_hack.extend(['@5', 'D=M', '@4', 'A=D-A', 'D=M', '@LCL', 'M=D'])
+        self.program_in_hack.extend(['@6', 'A=M', '0;JMP'])
 
     def write_to_file(self, filename):
         """
