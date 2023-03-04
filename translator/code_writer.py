@@ -170,9 +170,9 @@ class CodeWriter:
         while self.program_in_hack.count(label) > 1:
             i = self.program_in_hack.index(label)
             if label[0] == '(':
-                self.program_in_hack[i] = f'{label[:-1]}{count})'
+                self.program_in_hack[i] = f'{label[:-1]}.{count})'
             else:
-                self.program_in_hack[i] = f'{label}{count}'
+                self.program_in_hack[i] = f'{label}.{count}'
             count += 1
         return count
 
@@ -210,6 +210,7 @@ class CodeWriter:
         """
         commands = []
         #push return label onto stack
+        # this pushes whatever is in D onto the stack
         commands.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
         #push LCL 
 
