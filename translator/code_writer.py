@@ -212,24 +212,27 @@ class CodeWriter:
         2) Unconditional GOTO Label for the function
         Return to the caller will be handled separately
         """
-        commands = []
+        function_name = command_in['segment']
+        n_args = command_in['address']
         #push return label onto stack - I THINK JUST PUSH THE LABEL
         # AND THE ASSEMBLER WILL MAKE IT A NUMBER
-        # this pushes whatever is in D onto the stack
-        commands.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
-        #push LCL 
+        # this pushes whatever is in D onto the stack ['@SP', 'A=M', 'M=D', '@SP', 'M=M+1']
+        # push return label onto stack
+        self.program_in_hack.extend([f'//call {function_name} ', f'@{function_name}$ret', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        #push values of LCL, ARG, THIS, THAT pointers onto stack to save caller frame
+        self.program_in_hack.extend(['@LCL', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        self.program_in_hack.extend(['@ARG', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        self.program_in_hack.extend(['@THIS', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        self.program_in_hack.extend(['@THAT', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        # reposition ARG segment for callee (update ARG pointer to SP - 5 - nArgs)
+        self.program_in_hack.extend(['@SP', 'D=M', '@5', 'D=D-A', f'@{n_args}', 'D=D-A', '@ARG', 'M=D'])
+        # reposition LCL segment for callee (set LCL point to SP)
+        self.program_in_hack.extend(['@SP', 'D=M', '@LCL', 'M=D'])
+        # unconditional jump to the function
+        self.program_in_hack.extend([f'@{function_name}', '0;JMP'])
+        # inject the return address label into the assembly file
+        self.program_in_hack.extend([f'({function_name}$ret)'])
 
-    def return_label(self, function_name):
-        '''
-        Generates a label for a function call. To handle multiple calls
-        to the same function in a single program, checks and iterates i
-        to generate a unqiue return lable for each call.
-        '''
-        i = 0
-        while f'{function_name}$ret.{i}' in self.program_in_hack:
-            i += 1 
-        label = f'{function_name}$ret.{i}'
-        return label
 
     def write_function(self, command_in):
         '''
@@ -251,20 +254,21 @@ class CodeWriter:
 
     def return_function(self):
         # push the return value to arg 0
-        self.program_in_hack.extend(['//return', '@SP', 'A=M-1', 'D=M', '@ARG', 'A=M', 'M=D'])
-        # let @5 be end_frame and @6 be return_address
-        # set @5 to end_frame address
-        self.program_in_hack.extend(['@LCL', 'D=M', '@5', 'M=D'])
-        # set @6 to be value of end_frame (still stored in D) - 5
-        self.program_in_hack.extend(['@5', 'A=D-A', 'D=M', '@6', 'M=D'])
+        self.program_in_hack.extend(['//return', '@SP', 'AM=M-1', 'D=M', '@ARG', 'A=M', 'M=D'])
+        # let @10 be end_frame and @11 be return_address
+        # set @10 to end_frame address
+        self.program_in_hack.extend(['@LCL', 'D=M', '@10', 'M=D'])
+        # set @11 to be value of end_frame (still stored in D) - 5
+        self.program_in_hack.extend(['@5', 'A=D-A', 'D=M', '@11', 'M=D'])
         # repostion SP to ARG + 1
         self.program_in_hack.extend(['@ARG', 'D=M+1', '@SP', 'M=D'])
         # restore THAT, THIS, ARG, and LCL to caller state
-        self.program_in_hack.extend(['@5', 'A=M-1', 'D=M', '@THAT', 'M=D'])
-        self.program_in_hack.extend(['@5', 'D=M', '@2', 'A=D-A', 'D=M', '@THIS', 'M=D'])
-        self.program_in_hack.extend(['@5', 'D=M', '@3', 'A=D-A', 'D=M', '@ARG', 'M=D'])
-        self.program_in_hack.extend(['@5', 'D=M', '@4', 'A=D-A', 'D=M', '@LCL', 'M=D'])
-        self.program_in_hack.extend(['@6', 'A=M', '0;JMP'])
+        self.program_in_hack.extend(['@10', 'A=M-1', 'D=M', '@THAT', 'M=D'])
+        self.program_in_hack.extend(['@10', 'D=M', '@2', 'A=D-A', 'D=M', '@THIS', 'M=D'])
+        self.program_in_hack.extend(['@10', 'D=M', '@3', 'A=D-A', 'D=M', '@ARG', 'M=D'])
+        self.program_in_hack.extend(['@10', 'D=M', '@4', 'A=D-A', 'D=M', '@LCL', 'M=D'])
+        # unconditional jump to return address
+        self.program_in_hack.extend(['@11', 'A=M', '0;JMP'])
 
     def write_to_file(self, filename):
         """
