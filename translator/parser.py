@@ -30,7 +30,7 @@ class Parser:
                 filename = os.fsdecode(file)
                 if filename.endswith(".vm"):
                     with open(os.path.join(file_path, filename), 'r', encoding='utf-8') as input_file:
-                        file_data = input_file.readlines()
+                        file_data.extend(input_file.readlines())
         else:
             with open(file_path, 'r', encoding='utf-8') as input_file:
                 file_data = input_file.readlines()

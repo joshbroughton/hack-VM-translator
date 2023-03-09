@@ -13,8 +13,8 @@ class CodeWriter:
     def __init__(self, filename):
         self.filename = filename.replace('/', '')
         # bootsrap code: set SP to 256, call sys.init
-        self.program_in_hack = []#['@256', 'D=A', '@SP', 'M=D']
-        #self.call_function({'command': 'call', 'segment': 'Sys.init', 'address': '0'})
+        self.program_in_hack = ['@256', 'D=A', '@SP', 'M=D']
+        self.call_function({'command': 'call', 'segment': 'Sys.init', 'address': '0'})
 
     def write_arithmetic(self, command_in):
         """
