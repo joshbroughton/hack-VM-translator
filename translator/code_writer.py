@@ -27,8 +27,8 @@ class CodeWriter:
         if command == 'eq' or command == 'gt' or command == 'lt':
             commands.extend(['// equals?',
                              '@SP', 'A=M-1', 'D=M', '@SP', 'M=M-1', 'A=M-1', 'D=M-D',
-                             '@JUMP', 'D;JEQ', '@SP', 'A=M-1', 'M=0', '@END', '0;JMP', '(JUMP)',
-                             '@SP', 'A=M-1', 'M=-1', '(END)'
+                             '@JUMP', 'D;JEQ', '@SP', 'AM=M-1', 'M=0', '@END', '0;JMP', '(JUMP)',
+                             '@SP', 'AM=M-1', 'M=-1', '(END)'
                             ])
         if command == 'gt':
             commands[0] = '// greater than?'
