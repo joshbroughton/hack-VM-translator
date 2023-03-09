@@ -12,8 +12,9 @@ class CodeWriter:
 
     def __init__(self, filename):
         self.filename = filename.replace('/', '')
-    # initalize the assembly output
-    program_in_hack = []
+        # bootsrap code: set SP to 256, call sys.init
+        self.program_in_hack = []#['@256', 'D=A', '@SP', 'M=D']
+        #self.call_function({'command': 'call', 'segment': 'Sys.init', 'address': '0'})
 
     def write_arithmetic(self, command_in):
         """
@@ -218,7 +219,7 @@ class CodeWriter:
         # AND THE ASSEMBLER WILL MAKE IT A NUMBER
         # this pushes whatever is in D onto the stack ['@SP', 'A=M', 'M=D', '@SP', 'M=M+1']
         # push return label onto stack
-        self.program_in_hack.extend([f'//call {function_name} ', f'@{function_name}$ret', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        self.program_in_hack.extend([f'//call {function_name} {n_args}', f'@{function_name}$ret', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
         #push values of LCL, ARG, THIS, THAT pointers onto stack to save caller frame
         self.program_in_hack.extend(['@LCL', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
         self.program_in_hack.extend(['@ARG', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
@@ -232,7 +233,6 @@ class CodeWriter:
         self.program_in_hack.extend([f'@{function_name}', '0;JMP'])
         # inject the return address label into the assembly file
         self.program_in_hack.extend([f'({function_name}$ret)'])
-
 
     def write_function(self, command_in):
         '''
@@ -249,17 +249,17 @@ class CodeWriter:
         # push n_vars 0s onto the stack
         count = 0
         while count < n_vars:
-            self.write_push_pop({'command': 'push', 'segment': 'constant', 'address': '0'})
+            self.program_in_hack.extend(['@SP', 'D=A', 'A=M', 'M=D', '@SP', 'M=M+1'])
             count += 1
 
     def return_function(self):
-        # push the return value to arg 0
-        self.program_in_hack.extend(['//return', '@SP', 'AM=M-1', 'D=M', '@ARG', 'A=M', 'M=D'])
         # let @10 be end_frame and @11 be return_address
         # set @10 to end_frame address
         self.program_in_hack.extend(['@LCL', 'D=M', '@10', 'M=D'])
         # set @11 to be value of end_frame (still stored in D) - 5
-        self.program_in_hack.extend(['@5', 'A=D-A', 'D=M', '@11', 'M=D'])
+        self.program_in_hack.extend(['@LCL', 'D=M', '@5', 'D=D-A', 'A=D', 'D=M', '@11', 'M=D'])
+        # push the return value to arg 0
+        self.program_in_hack.extend(['//return', '@SP', 'A=M-1', 'D=M', '@ARG', 'A=M', 'M=D', '@SP', 'M=M-1'])
         # repostion SP to ARG + 1
         self.program_in_hack.extend(['@ARG', 'D=M+1', '@SP', 'M=D'])
         # restore THAT, THIS, ARG, and LCL to caller state
