@@ -5,9 +5,11 @@ to Java, in which programs written in the high-level language (Jack) are compile
 intermediary virtual machine code before being translated down to Hack assembly and finally
 assembled into hack machine code.
 
-To translate a `<filename>.vm` file into hack assembly, run: 
+To translate a `<filename>.vm` file or folder containing .vm files into hack assembly, run: 
 
-`python3 vm_translator.py <relative_path_to_filename>.vm`
+`python3 vm_translator.py <relative_path_to_filename>.vm` or `python3 vm_translator.py <relative_path_to_folder>`
+
+The folder may contain other files; the translator will only load .vm files. The output is a single .asm file.
 
 To run test scripts, launch the nand2tetris CPU Emulator, available in the tools directory from
 the nand2tetris [website](https://www.nand2tetris.org/).
