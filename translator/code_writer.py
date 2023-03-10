@@ -2,7 +2,7 @@
 Contains the CodeWriter class, which takes individual Hack VM commands and
 translates them into Hack assembly language to perform the desired task.
 """
-
+import re
 
 class CodeWriter:
     """
@@ -217,9 +217,10 @@ class CodeWriter:
         n_args = command_in['address']
         #push return label onto stack - I THINK JUST PUSH THE LABEL
         # AND THE ASSEMBLER WILL MAKE IT A NUMBER
-        # this pushes whatever is in D onto the stack ['@SP', 'A=M', 'M=D', '@SP', 'M=M+1']
         # push return label onto stack
-        self.program_in_hack.extend([f'//call {function_name} {n_args}', f'@{function_name}$ret', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        return_label = self.replace_duplicate_return_labels(f'{function_name}$ret')
+
+        self.program_in_hack.extend([f'//call {function_name} {n_args}', f'@{return_label}', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
         #push values of LCL, ARG, THIS, THAT pointers onto stack to save caller frame
         self.program_in_hack.extend(['@LCL', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
         self.program_in_hack.extend(['@ARG', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
@@ -232,7 +233,24 @@ class CodeWriter:
         # unconditional jump to the function
         self.program_in_hack.extend([f'@{function_name}', '0;JMP'])
         # inject the return address label into the assembly file
-        self.program_in_hack.extend([f'({function_name}$ret)'])
+        self.program_in_hack.extend([f'({return_label})'])
+
+    def replace_duplicate_return_labels(self, label):
+        '''
+        Helper method to check for existing return labels in the assembly code,
+        and if return labels exists returns an iterated return label
+        e.g. Main.main$ret.1 already exists, this will return Main.main$ret.2
+        '''
+        # escape the special characters to build the regex
+        search_label = '\.'.join(label.split('.'))
+        search_label = '\$'.join(search_label.split('$'))
+        reg = re.compile(f'[^(]*{search_label}.*$')
+        # create list of all matches
+        matches = [ string for string in self.program_in_hack if reg.match(string)]
+        if len(matches) > 0:
+            return f'{label}.{len(matches)}'
+        else:
+            return label
 
     def write_function(self, command_in):
         '''
