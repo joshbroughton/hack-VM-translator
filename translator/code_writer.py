@@ -152,6 +152,8 @@ class CodeWriter:
             self.write_function(command_in)
         elif command == 'return':
             self.return_function()
+        elif command == 'filename':
+            self.filename = command_in['segment']
         else:
             self.write_arithmetic(command_in)
 
