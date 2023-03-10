@@ -2,7 +2,7 @@
 Contains the CodeWriter class, which takes individual Hack VM commands and
 translates them into Hack assembly language to perform the desired task.
 """
-
+import re
 
 class CodeWriter:
     """
@@ -12,8 +12,9 @@ class CodeWriter:
 
     def __init__(self, filename):
         self.filename = filename.replace('/', '')
-    # initalize the assembly output
-    program_in_hack = ['@256', 'D=A', '@SP', 'M=D']
+        # bootsrap code: set SP to 256, call sys.init
+        self.program_in_hack = ['@256', 'D=A', '@SP', 'M=D']
+        self.call_function({'command': 'call', 'segment': 'Sys.init', 'address': '0'})
 
     def write_arithmetic(self, command_in):
         """
@@ -145,6 +146,14 @@ class CodeWriter:
             self.write_goto(command_in)
         elif command == 'if-goto':
             self.write_if_goto(command_in)
+        elif command == 'call':
+            self.call_function(command_in)
+        elif command == 'function':
+            self.write_function(command_in)
+        elif command == 'return':
+            self.return_function()
+        elif command == 'filename':
+            self.filename = command_in['segment']
         else:
             self.write_arithmetic(command_in)
 
@@ -168,9 +177,9 @@ class CodeWriter:
         while self.program_in_hack.count(label) > 1:
             i = self.program_in_hack.index(label)
             if label[0] == '(':
-                self.program_in_hack[i] = f'{label[:-1]}{count})'
+                self.program_in_hack[i] = f'{label[:-1]}.{count})'
             else:
-                self.program_in_hack[i] = f'{label}{count}'
+                self.program_in_hack[i] = f'{label}.{count}'
             count += 1
         return count
 
@@ -198,6 +207,88 @@ class CodeWriter:
         label = command_in['segment']
         self.program_in_hack.extend([f'//if-goto {label}', '@SP', 'AM=M-1', 'D=M',
                                      f'@{label}', 'D;JNE'])
+
+    def call_function(self, command_in):
+        """
+        Write hack assembly to call a function:
+        1) Housekeeping to save the state of the caller
+        2) Unconditional GOTO Label for the function
+        Return to the caller will be handled separately
+        """
+        function_name = command_in['segment']
+        n_args = command_in['address']
+        #push return label onto stack - I THINK JUST PUSH THE LABEL
+        # AND THE ASSEMBLER WILL MAKE IT A NUMBER
+        # push return label onto stack
+        return_label = self.replace_duplicate_return_labels(f'{function_name}$ret')
+
+        self.program_in_hack.extend([f'//call {function_name} {n_args}', f'@{return_label}', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        #push values of LCL, ARG, THIS, THAT pointers onto stack to save caller frame
+        self.program_in_hack.extend(['@LCL', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        self.program_in_hack.extend(['@ARG', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        self.program_in_hack.extend(['@THIS', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        self.program_in_hack.extend(['@THAT', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        # reposition ARG segment for callee (update ARG pointer to SP - 5 - nArgs)
+        self.program_in_hack.extend(['@SP', 'D=M', '@5', 'D=D-A', f'@{n_args}', 'D=D-A', '@ARG', 'M=D'])
+        # reposition LCL segment for callee (set LCL point to SP)
+        self.program_in_hack.extend(['@SP', 'D=M', '@LCL', 'M=D'])
+        # unconditional jump to the function
+        self.program_in_hack.extend([f'@{function_name}', '0;JMP'])
+        # inject the return address label into the assembly file
+        self.program_in_hack.extend([f'({return_label})'])
+
+    def replace_duplicate_return_labels(self, label):
+        '''
+        Helper method to check for existing return labels in the assembly code,
+        and if return labels exists returns an iterated return label
+        e.g. Main.main$ret.1 already exists, this will return Main.main$ret.2
+        '''
+        # escape the special characters to build the regex
+        search_label = '\.'.join(label.split('.'))
+        search_label = '\$'.join(search_label.split('$'))
+        reg = re.compile(f'[^(]*{search_label}.*$')
+        # create list of all matches
+        matches = [ string for string in self.program_in_hack if reg.match(string)]
+        if len(matches) > 0:
+            return f'{label}.{len(matches)}'
+        else:
+            return label
+
+    def write_function(self, command_in):
+        '''
+        writes hack assembly code for a function functionName nVars command,
+        i.e. for declaring a function
+        '''
+        function_name = command_in['segment']
+        n_vars = int(command_in['address'])
+        # insert a label (function_name)
+        self.program_in_hack.extend([f'//function {function_name} {n_vars}',
+                                    f'({function_name})'])
+        # set the LCL pointer to point to current SP 
+        self.program_in_hack.extend(['@SP', 'D=M', '@LCL', 'M=D'])
+        # push n_vars 0s onto the stack
+        count = 0
+        while count < n_vars:
+            self.program_in_hack.extend(['@SP', 'D=A', 'A=M', 'M=D', '@SP', 'M=M+1'])
+            count += 1
+
+    def return_function(self):
+        # let @10 be end_frame and @11 be return_address
+        # set @10 to end_frame address
+        self.program_in_hack.extend(['@LCL', 'D=M', '@10', 'M=D'])
+        # set @11 to be value of end_frame (still stored in D) - 5
+        self.program_in_hack.extend(['@LCL', 'D=M', '@5', 'D=D-A', 'A=D', 'D=M', '@11', 'M=D'])
+        # push the return value to arg 0
+        self.program_in_hack.extend(['//return', '@SP', 'A=M-1', 'D=M', '@ARG', 'A=M', 'M=D', '@SP', 'M=M-1'])
+        # repostion SP to ARG + 1
+        self.program_in_hack.extend(['@ARG', 'D=M+1', '@SP', 'M=D'])
+        # restore THAT, THIS, ARG, and LCL to caller state
+        self.program_in_hack.extend(['@10', 'A=M-1', 'D=M', '@THAT', 'M=D'])
+        self.program_in_hack.extend(['@10', 'D=M', '@2', 'A=D-A', 'D=M', '@THIS', 'M=D'])
+        self.program_in_hack.extend(['@10', 'D=M', '@3', 'A=D-A', 'D=M', '@ARG', 'M=D'])
+        self.program_in_hack.extend(['@10', 'D=M', '@4', 'A=D-A', 'D=M', '@LCL', 'M=D'])
+        # unconditional jump to return address
+        self.program_in_hack.extend(['@11', 'A=M', '0;JMP'])
 
     def write_to_file(self, filename):
         """

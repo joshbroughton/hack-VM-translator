@@ -2,7 +2,7 @@
 Contains the Parser class, which reads Hack virtual machine code
 line by line and parses it into individual commands
 """
-
+import os
 import re
 
 
@@ -23,8 +23,18 @@ class Parser:
         each element in the list is a line from the file
         """
         file_data = []
-        with open(file_path, 'r', encoding='utf-8') as input_file:
-            file_data = input_file.readlines()
+        if os.path.isdir(file_path):
+            directory = os.fsencode(file_path)
+    
+            for file in os.listdir(directory):
+                filename = os.fsdecode(file)
+                if filename.endswith(".vm"):
+                    with open(os.path.join(file_path, filename), 'r', encoding='utf-8') as input_file:
+                        file_data.append(f'filename {filename}')
+                        file_data.extend(input_file.readlines())
+        else:
+            with open(file_path, 'r', encoding='utf-8') as input_file:
+                file_data = input_file.readlines()
         return file_data
 
     def strip_line(self, line):
